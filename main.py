@@ -4,59 +4,80 @@ import numpy as np
 import torch
 from transformers import CLIPProcessor, CLIPModel
 from PIL import Image
+from os import listdir
+from os.path import isfile, join
+import time
 
-# Select device (use MPS for Apple Silicon)
-device = "cuda" if torch.cuda.is_available() else "cpu"
+# REQUIRED
+images_path = "/home/andy/Downloads/Thomas_Cole"
+
+compute_device = "cpu"
+if torch.cuda.is_available():
+   compute_device = "cuda"
+elif torch.backends.mps.is_available():
+   compute_device = "mps"
+
+device = compute_device 
 print(device)
 
-# Load Hugging Face CLIP model
-model_name = "openai/clip-vit-base-patch16"
+model_name = "openai/clip-vit-base-patch32"
 model = CLIPModel.from_pretrained(model_name).to(device)
-model = torch.compile(model)  # Optional: Optimized execution
+#model = torch.compile(model) #Optional
 processor = CLIPProcessor.from_pretrained(model_name)
 
-# Initialize LanceDB
-db = lancedb.connect("./clip.db")  # Creates/opens a database in a folder
+db = lancedb.connect("./clip.db")
 table_name = "images"
 
-# Define schema if the table does not exist
-if table_name not in db.table_names():
-    schema = pa.schema([
-        ("vector", lancedb.vector(512)),  # CLIP embeddings
-        ("path", pa.string())  # Image file path
-    ])
-    table = db.create_table(table_name, schema=schema)
-else:
-    table = db.open_table(table_name)
+schema = pa.schema([
+    ("vector", lancedb.vector(512)),
+    ("path", pa.string())
+])
 
-# Function to encode image into CLIP vector
+tables = db.table_names()
+
+if table_name in tables:
+  table = db.open_table(table_name)
+else:
+  table = db.create_table(table_name, schema=schema, mode="overwrite")
+
+# index if your db is large enough
+# table.create_index(num_partitions=8, num_sub_vectors=8)
+
 def encode_image(image_path):
     image = Image.open(image_path).convert("RGB")
+    width, height = image.size
+    image = image.resize((width // 2, height // 2))
+
     inputs = processor(images=image, return_tensors="pt").to(device)
 
     with torch.no_grad():
         image_features = model.get_image_features(**inputs)
 
-    return image_features.cpu().numpy().flatten()
+    vector = image_features.cpu().numpy().flatten()
+    normal = np.linalg.norm(vector)
+    return vector / normal if normal > 0 else vector
 
-# Function to add image to LanceDB
-def add_image(image_path):
-    vector = encode_image(image_path)
-    table.add([{"vector": vector, "path": image_path}])
-    print(f"Added {image_path} to database.")
+def add_images(path):
+    photos = [file for file in listdir(path) if isfile(join(path, file))]
+    existing_photos = set(table.to_arrow()["path"].to_pylist())
+    for photo in photos:
+      img_path = join(path, photo)
+      if img_path in existing_photos:
+          continue
+      vector = encode_image(img_path)
+      table.add([{"vector": vector, "path": img_path}])
+      print(f"Added {img_path} to database.")
 
-# Example: Add images to the DB
-#add_image("images/img01.JPG")
-#add_image("images/img02.jpg")
-#add_image("images/img03.jpg")
+add_images(images_path)
 
 def encode_text(text):
     inputs = processor(text=[text], return_tensors="pt").to(device)
 
     with torch.no_grad():
         text_features = model.get_text_features(**inputs)
-
-    return text_features.cpu().numpy().flatten()
+    vector = text_features.cpu().numpy().flatten()
+    normal = np.linalg.norm(vector)
+    return vector / normal if normal > 0 else vector
 
 def search_images(query, top_k=2):
     query_vector = encode_text(query)
@@ -65,5 +86,6 @@ def search_images(query, top_k=2):
     for res in results:
         print(f"Match: {res['path']}")
 
-search_images("flowers")
+query = input("Search prompt: ")
 
+search_images(query)
