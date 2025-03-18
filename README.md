@@ -7,7 +7,7 @@ FindPhoto is an image context search app using openai's CLIP model
 ### Setup
 
 - Create venv `python3 -m venv .venv`
-- Active venv `source .venv/bin/activate`
+- Active venv `source .venv/bin/activate` or other for your current shell
 - Install packages `pip install -r requirements.txt`
 - Finally install `PyTorch` for your platform get it [here](https://pytorch.org/get-started/locally/)
 - You can change the model in the `model_name`
