@@ -9,7 +9,7 @@ from os.path import isfile, join
 import time
 
 # REQUIRED
-images_path = "/home/andy/Downloads/Thomas_Cole"
+images_path = ""
 
 compute_device = "cpu"
 if torch.cuda.is_available():
