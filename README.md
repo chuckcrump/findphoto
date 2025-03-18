@@ -13,3 +13,7 @@ FindPhoto is an image context search app using openai's CLIP model
 - You can change the model in the `model_name`
 - Then set the `images_path` in `main.py` to the path to be processed
 - Finally run `python3 main.py` and enter your prompt!
+
+### Future
+
+- Electron app
