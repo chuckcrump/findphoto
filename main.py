@@ -8,7 +8,7 @@ from os import listdir
 from os.path import isfile, join
 
 # REQUIRED
-images_path = ""
+images_path = "images"
 
 compute_device = "cpu"
 if torch.cuda.is_available():
@@ -81,18 +81,4 @@ def encode_text(text):
 def search_images(query, top_k=3):
     query_vector = encode_text(query)
     results = table.search(query_vector).limit(top_k).to_list()
-    
-    for res in results:
-        print(f"Match: {res['path']}")
-
-while True:
-  choice = input("1. search, 2. exit")
-  if choice == "1":
-    query = input("Search prompt: ")
-    search_images(query)
-    query = ""
-  elif choice == "2":
-    del model
-    if device == "cuda":
-       torch.cuda.empty_cache()
-    break
+    return [res["path"] for res in results]    
