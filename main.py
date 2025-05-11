@@ -8,7 +8,7 @@ from os import listdir
 from os.path import isfile, join
 
 # REQUIRED
-images_path = "/home/andy/Pictures/Thomas_Cole"
+images_path = ""
 
 compute_device = "cpu"
 if torch.cuda.is_available():
