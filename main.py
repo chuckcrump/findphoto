@@ -8,7 +8,7 @@ from os import listdir
 from os.path import isfile, join
 
 # REQUIRED
-images_path = "images"
+images_path = "/home/andy/Pictures/Thomas_Cole"
 
 compute_device = "cpu"
 if torch.cuda.is_available():
@@ -45,7 +45,10 @@ else:
 def encode_image(image_path):
     image = Image.open(image_path).convert("RGB")
     width, height = image.size
-    image = image.resize((width // 2, height // 2))
+    if width < 1000 or height < 1000:
+        return None
+    width, height = image.size
+    image = image.resize((int(width // 1.33333), int(height // 1.33333)))
 
     inputs = processor(images=image, return_tensors="pt").to(device)
 
@@ -81,4 +84,4 @@ def encode_text(text):
 def search_images(query, top_k=3):
     query_vector = encode_text(query)
     results = table.search(query_vector).limit(top_k).to_list()
-    return [res["path"] for res in results]    
+    return [{"path": res["path"], "file_name": res["path"].split("/")[-1]} for res in results]
